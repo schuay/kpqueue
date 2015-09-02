@@ -95,7 +95,7 @@ block_array<K, V, Rlx>::insert(block<K, V> *new_block,
                 m_blocks[i - 1] = nullptr;
             }
         }
-        block_insert(i, lazy_insert_block.finalize());
+        block_insert(i, lazy_insert_block.finalize(pool));
     }
 
     m_size++;

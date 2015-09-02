@@ -20,9 +20,11 @@
 #ifndef __LAZY_BLOCK_H
 #define __LAZY_BLOCK_H
 
+#include <algorithm>
 #include <cassert>
 
 #include "block.h"
+#include "shared_lsm/block_pool.h"
 
 namespace kpq
 {
@@ -37,24 +39,43 @@ template <class K, class V, int MaxBlocks>
 class lazy_block
 {
 public:
-    lazy_block(const block<K, V> *b,
+    lazy_block(block<K, V> *b,
                const size_t b_first);
     virtual ~lazy_block();
 
-    void merge(const block<K, V> *b,
+    void merge(block<K, V> *b,
                const size_t b_first);
 
-    block<K, V> *finalize();
+    // TODO: Using the slsm pool here is less than ideal. A consistent interface
+    // between block_pool and block_storage would be great.
+    block<K, V> *finalize(block_pool<K, V> *pool);
 
     size_t power_of_2() const { return m_power_of_2; }
     size_t capacity() const { return m_capacity; }
 
 private:
+    struct block_head
+    {
+        block<K, V> *b;
+        size_t ix;
+        K key;
+
+        bool operator<(const block_head &that) const {
+            // Note the reversed operator used in order to create a min heap.
+            return this->key > that.key;
+        }
+    };
+
+private:
+    static bool next_head(block<K, V> *b,
+                          const size_t ix,
+                          block_head &head);
+
+private:
     size_t m_power_of_2;
     size_t m_capacity;
 
-    const block<K, V> *m_blocks[MaxBlocks];
-    size_t m_firsts[MaxBlocks];
+    block_head m_heads[MaxBlocks];
     size_t m_block_count;
 };
 
