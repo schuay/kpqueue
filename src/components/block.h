@@ -43,6 +43,9 @@ template <class K, class V>
 class block
 {
 private:
+    template <class X, class Y, int Z>
+    friend class lazy_block;
+
     typedef std::pair<item<K, V> *, version_t> item_pair_t;
 
 public:

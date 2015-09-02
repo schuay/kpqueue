@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "components/block.h"
+#include "components/lazy_block.h"
 #include "block_pivots.h"
 #include "block_pool.h"
 

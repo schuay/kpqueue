@@ -79,26 +79,23 @@ block_array<K, V, Rlx>::insert(block<K, V> *new_block,
 
         /* Merge with equal capacity blocks until strictly descending invariant is preserved.*/
 
-        auto insert_block = new_block;
+        lazy_block<K, V, MAX_BLOCKS> lazy_insert_block(new_block, new_block->first());
         for (; i > 0; i--) {
             auto other_block = m_blocks[i - 1];
             if (other_block == nullptr) {
                 continue;
-            } else if (other_block->capacity() > insert_block->capacity()) {
+            } else if (other_block->capacity() > lazy_insert_block.capacity()) {
                 break;
             } else {
-                assert(other_block->capacity() == insert_block->capacity());
+                assert(other_block->capacity() == lazy_insert_block.capacity());
                 const size_t other_first = m_pivots.nth_ix_in(0, i - 1);
 
-                auto merged_block = pool->get_block(insert_block->power_of_2() + 1);
-                merged_block->merge(insert_block, insert_block->first(),
-                                    other_block, other_first);
+                lazy_insert_block.merge(other_block, other_first);
 
-                insert_block = merged_block;
                 m_blocks[i - 1] = nullptr;
             }
         }
-        block_insert(i, insert_block);
+        block_insert(i, lazy_insert_block.finalize());
     }
 
     m_size++;
