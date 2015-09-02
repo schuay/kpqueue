@@ -76,32 +76,40 @@ template <class K, class V, int MaxBlocks>
 block<K, V> *
 lazy_block<K, V, MaxBlocks>::finalize(block_pool<K, V> *pool)
 {
+    static constexpr auto block_heap_ptr_cmp =
+            [] (const block_head *l, const block_head *r) { return (l->key > r->key); };
+
     if (m_block_count == 1) {
         return m_heads[0].b;
     }
 
     /* Perform a multi-way merge of the given blocks. */
 
+    block_head *heads[MaxBlocks];
+    for (size_t i = 0; i < m_block_count; i++) {
+        heads[i] = &m_heads[i];
+    }
+
     auto merge_block = pool->get_block(m_power_of_2);
-    std::make_heap(m_heads, m_heads + m_block_count);
+    std::make_heap(heads, heads + m_block_count, block_heap_ptr_cmp);
 
     int dst = 0;
     while (m_block_count > 1) {
-        std::pop_heap(m_heads, m_heads + m_block_count);
+        std::pop_heap(heads, heads + m_block_count, block_heap_ptr_cmp);
         m_block_count--;
 
-        block_head &head = m_heads[m_block_count];
+        block_head &head = *heads[m_block_count];
         merge_block->m_item_pairs[dst++] = head.b->m_item_pairs[head.ix];
 
         if (next_head(head.b, head.ix + 1, head)) {
             m_block_count++;
-            std::push_heap(m_heads, m_heads + m_block_count);
+            std::push_heap(heads, heads + m_block_count, block_heap_ptr_cmp);
         }
     }
 
     // Append all trailing items in remaining block.
 
-    block_head &head = m_heads[0];
+    block_head &head = *heads[0];
     do {
         merge_block->m_item_pairs[dst++] = head.b->m_item_pairs[head.ix];
     } while (next_head(head.b, head.ix + 1, head));
