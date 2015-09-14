@@ -19,8 +19,8 @@
 
 template <class K, class V, int Rlx>
 dist_lsm_local<K, V, Rlx>::dist_lsm_local() :
-    m_head(nullptr),
-    m_tail(nullptr),
+    m_blocks { nullptr },
+    m_size(0),
     m_cached_best(block<K, V>::peek_t::EMPTY())
 {
 }
@@ -64,11 +64,16 @@ dist_lsm_local<K, V, Rlx>::insert(item<K, V> *it,
 
     /* If possible, simply append to the current tail block. */
 
-    if (m_tail != nullptr && m_tail->last() < m_tail->capacity()) {
-        K tail_key;
-        if (m_tail->peek_tail(tail_key) && tail_key <= it_key) {
-            m_tail->insert_tail(it, version);
-            return;
+    const bool empty = (m_size == 0);
+    auto tail = empty ? nullptr : m_blocks[m_size - 1];
+
+    if (!empty) {
+        if (tail->last() < tail->capacity()) {
+            K tail_key;
+            if (tail->peek_tail(tail_key) && tail_key <= it_key) {
+                tail->insert_tail(it, version);
+                return;
+            }
         }
     }
 
@@ -77,10 +82,10 @@ dist_lsm_local<K, V, Rlx>::insert(item<K, V> *it,
      * array of capacity 1. */
 
     block<K, V> *new_block;
-    if (m_tail == nullptr) {
+    if (empty) {
         new_block = m_block_storage.get_largest_block();
     } else {
-        const size_t tail_size = m_tail->power_of_2();
+        const size_t tail_size = tail->power_of_2();
         new_block = m_block_storage.get_block((tail_size == 0) ? 0 : tail_size - 1);
     }
 
@@ -93,8 +98,11 @@ void
 dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
                                         shared_lsm<K, V, Rlx> *slsm)
 {
+    int other_ix = m_size - 1;
+    const size_t old_size = m_size;
+
     block<K, V> *insert_block = new_block;
-    block<K, V> *other_block  = m_tail;
+    block<K, V> *other_block  = (other_ix < 0) ? nullptr : m_blocks[other_ix];
     block<K, V> *delete_block = nullptr;
 
     /* Merge as long as the prev block is of the same size as the new block. */
@@ -112,7 +120,9 @@ dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
         insert_block->set_unused();
         insert_block = merged_block;
         delete_block = other_block;
-        other_block  = other_block->m_prev;
+
+        other_ix--;
+        other_block  = (other_ix < 0) ? nullptr : m_blocks[other_ix];
     }
 
     if (slsm != nullptr && insert_block->size() >= (Rlx + 1) / 2) {
@@ -127,28 +137,17 @@ dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
         slsm->insert(insert_block);
         insert_block->set_unused();
 
-        if (other_block != nullptr) {
-            other_block->m_next.store(nullptr, std::memory_order_relaxed);
-        } else {
-            m_head.store(nullptr, std::memory_order_relaxed);
-        }
-        m_tail = other_block;
+        m_size = other_ix + 1;
     } else {
         /* Insert the new block into the list. */
-        insert_block->m_prev = other_block;
-        if (other_block != nullptr) {
-            other_block->m_next.store(insert_block, std::memory_order_relaxed);
-        } else {
-            m_head.store(insert_block, std::memory_order_relaxed);
-        }
-        m_tail = insert_block;
+        m_blocks[other_ix + 1] = insert_block;
+        m_size = other_ix + 2;
     }
 
     /* Remove merged blocks from the list. */
-    while (delete_block != nullptr) {
-        auto next_block = delete_block->m_next.load(std::memory_order_relaxed);
-        delete_block->set_unused();
-        delete_block = next_block;
+    if (delete_block != nullptr) delete_block->set_unused();
+    for (size_t i = m_size; i < old_size; i++) {
+        m_blocks[i]->set_unused();
     }
 }
 
@@ -181,86 +180,59 @@ dist_lsm_local<K, V, Rlx>::peek(typename block<K, V>::peek_t &best)
         return;
     }
 
-    for (auto i = m_head.load(std::memory_order_relaxed);
-            i != nullptr;
-            i = i->m_next.load(std::memory_order_relaxed)) {
-
+retry:
+    for (size_t ix = 0; ix < m_size; ix++) {
+        auto i = m_blocks[ix];
         auto candidate = i->peek();
-        while (i->size() <= i->capacity() / 2) {
+
+        while (ix == 0 && i->size() <= i->capacity() / 2) {
 
             /* Simply remove empty blocks. */
-            if (i->capacity() == 1) {
-                const auto next = i->m_next.load(std::memory_order_relaxed);
-                if (i == m_tail) {
-                    m_tail = i->m_prev;
-                } else {
-                    next->m_prev = i->m_prev;
-                }
-
-                if (i == m_head.load(std::memory_order_relaxed)) {
-                    m_head = next;
-                } else {
-                    i->m_prev->m_next = next;
-                }
-
+            if (i->size() == 0) {
+                memmove(&m_blocks[ix],
+                        &m_blocks[ix + 1],
+                        sizeof(m_blocks[0]) * (m_size - ix - 1));
+                m_size--;
                 i->set_unused();
 
-                return;
+                goto retry;  // TODO: Don't retry from beginning.
             }
 
             /* Shrink. */
 
             block<K, V> *new_block = m_block_storage.get_block(i->power_of_2() - 1);
             new_block->copy(i);
-
-            new_block->m_next.store(i->m_next.load(std::memory_order_relaxed),
-                                    std::memory_order_relaxed);
-            new_block->m_prev = i->m_prev;
+            i->set_unused();
 
             /* Merge. TODO: Shrink-Merge optimization. */
 
-            auto next = new_block->m_next.load(std::memory_order_relaxed);
-            if (next != nullptr && new_block->capacity() == next->capacity()) {
+            size_t next_ix = ix + 1;
+            auto next = m_blocks[next_ix];
+            if (next_ix < m_size && new_block->capacity() == next->capacity()) {
                 auto merged_block = m_block_storage.get_block(new_block->power_of_2() + 1);
                 merged_block->merge(new_block, next);
 
-                merged_block->m_next = next->m_next.load(std::memory_order_relaxed);
-                merged_block->m_prev = new_block->m_prev;
-
+                next->set_unused();
                 new_block->set_unused();
                 new_block = merged_block;
+
+                memmove(&m_blocks[next_ix],
+                        &m_blocks[next_ix + 1],
+                        sizeof(m_blocks[0]) * (m_size - next_ix - 1));
+                m_size--;
             }
 
             /* Insert new block. */
 
-            next = new_block->m_next.load(std::memory_order_relaxed);
-
-            if (next == nullptr) {
-                m_tail = new_block;
-            } else {
-                next->m_prev = new_block;
-            }
-
-            if (new_block->m_prev == nullptr) {
-                m_head.store(new_block, std::memory_order_relaxed);
-            } else {
-                new_block->m_prev->m_next.store(new_block, std::memory_order_relaxed);
-            }
+            m_blocks[ix] = new_block;
 
             /* Bookkeeping and rerun peek(). */
 
-            for (auto j = i; j != nullptr && j != next;) {
-                const auto k = j->m_next.load(std::memory_order_relaxed);
-                j->set_unused();
-                j = k;
-            }
             i = new_block;
-
             candidate = i->peek();
         }
 
-        if (best.m_item == nullptr ||
-                (candidate.m_item != nullptr && candidate.m_key < best.m_key)) {
+        if (best.empty() || (!candidate.empty() && candidate.m_key < best.m_key)) {
             best = candidate;
         }
     }
@@ -298,19 +270,17 @@ dist_lsm_local<K, V, Rlx>::spy(dist_lsm<K, V, Rlx> *parent)
     }
 
     auto victim = parent->m_local.get(victim_id);
-    for (auto i = victim->m_head.load(std::memory_order_relaxed);
-            i != nullptr;
-            i = i->m_next.load(std::memory_order_relaxed)) {
+    for (size_t ix = 0; ix < victim->m_size; ix++) {
+        const auto b = victim->m_blocks[ix];
 
-        auto it = i->iterator();
-        for (auto p = it.next(); p.m_item != nullptr; p = it.next()) {
-            /* TODO: Verify that it's actually OK not to pass in the shared_lsm here.
-             * Intuitively, it seems to be fine since other local dist lsm's will preserve
-             * the correct bounds, and spy is only called when the local dist lsm is empty.
-             */
-            insert(p.m_item, p.m_version, nullptr);
-            num_spied++;
-        }
+        block<K, V> *new_block = m_block_storage.get_block(b->power_of_2());
+        new_block->copy(b);
+
+        // TODO: Verify that b is unchanged, i.e. we have a consistent copy.
+
+        num_spied += new_block->size();
+
+        m_blocks[m_size++] = new_block;
     }
 
     return num_spied;

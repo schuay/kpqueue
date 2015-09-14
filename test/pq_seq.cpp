@@ -87,9 +87,7 @@ protected:
  * successful and unsuccessful delete_mins.
  */
 
-typedef ::testing::Types< GlobalLock<uint32_t, uint32_t>
-                        , LSM<uint32_t>
-                        , dist_lsm<uint32_t, uint32_t, RELAXATION>
+typedef ::testing::Types< dist_lsm<uint32_t, uint32_t, RELAXATION>
                         , sequence_heap<uint32_t>
                         , skip_queue<uint32_t>
                         > TestTypes;

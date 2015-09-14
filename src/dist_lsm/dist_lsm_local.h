@@ -21,12 +21,13 @@
 #define __DIST_LSM_LOCAL_H
 
 #include <atomic>
-#include <random>
+#include <cstring>
 
 #include "components/block_storage.h"
 #include "components/item.h"
 #include "util/mm.h"
 #include "util/thread_local_ptr.h"
+#include "util/xorshf96.h"
 
 namespace kpq
 {
@@ -41,6 +42,9 @@ template <class K, class V, int Rlx>
 class dist_lsm_local
 {
 public:
+    // TODO: Define this in one, unique place.
+    static constexpr size_t MAX_BLOCKS = 32;
+
     dist_lsm_local();
     virtual ~dist_lsm_local();
 
@@ -77,8 +81,8 @@ private:
                       shared_lsm<K, V, Rlx> *slsm);
 
 private:
-    std::atomic<block<K, V> *> m_head; /**< The largest  block. */
-    block<K, V>               *m_tail; /**< The smallest block. */
+    block<K, V> *m_blocks[MAX_BLOCKS];
+    size_t m_size;
 
     block_storage<K, V, 3> m_block_storage;
     item_allocator<item<K, V>, typename item<K, V>::reuse> m_item_allocator;
@@ -87,7 +91,7 @@ private:
      *  return it. */
     typename block<K, V>::peek_t m_cached_best;
 
-    std::mt19937 m_gen;
+    xorshf96 m_gen;
 };
 
 #include "dist_lsm_local_inl.h"

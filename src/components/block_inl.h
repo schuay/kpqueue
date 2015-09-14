@@ -18,32 +18,7 @@
  */
 
 template <class K, class V>
-typename block<K, V>::peek_t
-block<K, V>::spying_iterator::next()
-{
-    peek_t p = peek_t::EMPTY();
-
-    while (m_next < m_last) {
-        const auto &item = m_block_items[m_next++];
-
-        p.m_version = item.m_version;
-        p.m_item    = item.m_item;
-        p.m_key     = item.m_item->key();
-
-        if (item.m_version != p.m_version) {
-            p.m_item = nullptr;
-        } else {
-            break;
-        }
-    }
-
-    return p;
-}
-
-template <class K, class V>
 block<K, V>::block(const size_t power_of_2) :
-    m_next(nullptr),
-    m_prev(nullptr),
     m_first(0),
     m_last(0),
     m_power_of_2(power_of_2),
@@ -257,19 +232,6 @@ block<K, V>::peek_tail(K &key)
 }
 
 template <class K, class V>
-typename block<K, V>::spying_iterator
-block<K, V>::iterator()
-{
-    typename block<K, V>::spying_iterator it;
-
-    it.m_block_items = m_block_items;
-    it.m_next = m_first;
-    it.m_last = m_last;
-
-    return it;
-}
-
-template <class K, class V>
 size_t
 block<K, V>::first() const
 {
@@ -327,9 +289,6 @@ block<K, V>::clear()
 {
     m_first = 0;
     m_last  = 0;
-
-    m_next.store(nullptr, std::memory_order_relaxed);
-    m_prev = nullptr;
 }
 
 template <class K, class V>

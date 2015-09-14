@@ -58,17 +58,6 @@ public:
     /** Information about a specific item. A nullptr item denotes failure of the operation. */
     typedef struct block_item peek_t;
 
-    class spying_iterator
-    {
-        friend class block<K, V>;
-    public:
-        peek_t next();
-
-    private:
-        block_item *m_block_items;
-        size_t m_last, m_next;
-    };
-
 public:
     block(const size_t power_of_2);
     virtual ~block();
@@ -97,8 +86,6 @@ public:
     /** Returns a pointer to the n-th item within this block (i.e. &items[n]). */
     const block_item *peek_nth(const size_t n) const;
 
-    spying_iterator iterator();
-
     size_t first() const;
     size_t last() const;
     size_t size() const;
@@ -110,12 +97,6 @@ public:
     void set_used();
 
     void clear();
-
-public:
-    /** Next pointers may be used by all threads. */
-    std::atomic<block<K, V> *> m_next;
-    /** Prev pointers may be used only by the owning thread. */
-    block<K, V> *m_prev;
 
 private:
     static bool item_owned(const block_item &block_item);
