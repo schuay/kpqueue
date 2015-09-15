@@ -81,15 +81,9 @@ dist_lsm_local<K, V, Rlx>::insert(item<K, V> *it,
      * only. For correctness, it is enough to always allocate a new
      * array of capacity 1. */
 
-    block<K, V> *new_block;
-    if (empty) {
-        new_block = m_block_storage.get_largest_block();
-    } else {
-        const size_t tail_size = tail->power_of_2();
-        new_block = m_block_storage.get_block((tail_size == 0) ? 0 : tail_size - 1);
-    }
-
+    block<K, V> *new_block = m_block_storage.get_block(0);
     new_block->insert(it, version);
+
     merge_insert(new_block, slsm);
 }
 
@@ -180,12 +174,12 @@ dist_lsm_local<K, V, Rlx>::peek(typename block<K, V>::peek_t &best)
         return;
     }
 
-retry:
     for (size_t ix = 0; ix < m_size; ix++) {
+outer:
         auto i = m_blocks[ix];
         auto candidate = i->peek();
 
-        while (ix == 0 && i->size() <= i->capacity() / 2) {
+        while (i->size() <= i->capacity() / 2) {
 
             /* Simply remove empty blocks. */
             if (i->size() == 0) {
@@ -195,7 +189,7 @@ retry:
                 m_size--;
                 i->set_unused();
 
-                goto retry;  // TODO: Don't retry from beginning.
+                goto outer;
             }
 
             /* Shrink. */
