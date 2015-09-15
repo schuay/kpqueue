@@ -111,7 +111,9 @@ dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
         auto merged_block = m_block_storage.get_block(merged_pow2);
         merged_block->merge(insert_block, other_block);
 
+        other_block->set_unused();
         insert_block->set_unused();
+
         insert_block = merged_block;
         delete_block = other_block;
 
@@ -136,12 +138,6 @@ dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
         /* Insert the new block into the list. */
         m_blocks[other_ix + 1] = insert_block;
         m_size = other_ix + 2;
-    }
-
-    /* Remove merged blocks from the list. */
-    if (delete_block != nullptr) delete_block->set_unused();
-    for (size_t i = other_ix + 2; i < old_size; i++) {
-        m_blocks[i]->set_unused();
     }
 }
 
