@@ -140,7 +140,7 @@ dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
 
     /* Remove merged blocks from the list. */
     if (delete_block != nullptr) delete_block->set_unused();
-    for (size_t i = m_size; i < old_size; i++) {
+    for (size_t i = other_ix + 2; i < old_size; i++) {
         m_blocks[i]->set_unused();
     }
 }
@@ -245,7 +245,6 @@ dist_lsm_local<K, V, Rlx>::spy(dist_lsm<K, V, Rlx> *parent)
     // assumed that it would be called infrequently, and thus was half-intentionally
     // tolerated even though it's extremely inefficient. Disable spying for now until
     // we have a fast alternative.
-
 #if 0
     int num_spied = 0;
 
