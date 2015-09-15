@@ -174,10 +174,9 @@ dist_lsm_local<K, V, Rlx>::peek(typename block<K, V>::peek_t &best)
         return;
     }
 
+    typename block<K, V>::peek_t candidate;
     for (size_t ix = 0; ix < m_size; ix++) {
-outer:
         auto i = m_blocks[ix];
-        auto candidate = i->peek();
 
         while (i->size() <= i->capacity() / 2) {
 
@@ -223,12 +222,13 @@ outer:
             /* Bookkeeping and rerun peek(). */
 
             i = new_block;
-            candidate = i->peek();
         }
 
+        candidate = i->peek();
         if (best.empty() || (!candidate.empty() && candidate.m_key < best.m_key)) {
             best = candidate;
         }
+outer:;
     }
 
     m_cached_best = best;
