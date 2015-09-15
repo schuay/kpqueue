@@ -259,17 +259,39 @@ dist_lsm_local<K, V, Rlx>::spy(dist_lsm<K, V, Rlx> *parent)
     }
 
     auto victim = parent->m_local.get(victim_id);
-    for (size_t ix = 0; ix < victim->m_size; ix++) {
-        const auto b = victim->m_blocks[ix];
+    if (victim->m_size == 0) {
+        return 0;
+    }
 
-        block<K, V> *new_block = m_block_storage.get_block(b->power_of_2());
-        new_block->copy(b);
+    /* Grab the victim's largest block. */
 
-        // TODO: Verify that b is unchanged, i.e. we have a consistent copy.
+    const auto b = victim->m_blocks[0];
 
-        num_spied += new_block->size();
+    const size_t min_pow = (m_size == 0) ? 0 : m_blocks[0]->power_of_2();
+    block<K, V> *new_block = m_block_storage.get_block(std::max(min_pow, b->power_of_2()));
+    new_block->copy(b);
 
-        m_blocks[m_size++] = new_block;
+    // TODO: Verify that b is unchanged, i.e. we have a consistent copy.
+
+    num_spied += new_block->size();
+
+    /* And merge it into the local lsm. */
+
+    if (m_size > 0) {
+        if (m_blocks[0]->power_of_2() == new_block->power_of_2()) {
+            auto merge_block = m_block_storage.get_block(new_block->power_of_2() + 1);
+            merge_block->merge(new_block, m_blocks[0]);
+
+            m_blocks[0]->set_unused();
+            merge_block->set_unused();
+
+            m_blocks[0] = merge_block;
+        } else {
+            assert(new_block->power_of_2() > m_blocks[0]->power_of_2());
+            memcpy(&m_blocks[1], &m_blocks[0], sizeof(m_blocks[0]) * m_size);
+            m_blocks[0] = new_block;
+            m_size++;
+        }
     }
 
     return num_spied;
