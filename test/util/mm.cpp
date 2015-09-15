@@ -56,11 +56,12 @@ TEST(MMTest, AllocMany)
 
 TEST(MMTest, ReuseCheck)
 {
-    kpq::item_allocator<uint32_t, reuse_above_42> alloc;
+    static constexpr size_t ITERATIONS = 42;
+    kpq::item_allocator<uint32_t, reuse_above_42, ITERATIONS> alloc;
 
     std::vector<uint32_t *> xs;
 
-    for (int i = 0; i < 42; i++) {
+    for (int i = 0; i < ITERATIONS; i++) {
         uint32_t *x = alloc.acquire();
         *x = i;
 
@@ -76,9 +77,9 @@ TEST(MMTest, ReuseCheck)
     *y = 66;
 
     bool reused = false;
-    for (int i = 0; i < 44; i++) {
+    for (int i = 0; i < ITERATIONS + 1; i++) {
         uint32_t *x = alloc.acquire();
-        *x = i;
+        *x = 0;
 
         if (x == y) {
             reused = true;
