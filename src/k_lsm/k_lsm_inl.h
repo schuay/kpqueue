@@ -101,8 +101,7 @@ k_lsm<K, V, Rlx>::delete_min(V &val)
             best_dist = block<K, V>::peek_t::EMPTY(),
             best_shared = block<K, V>::peek_t::EMPTY();
 
-    static constexpr int NRETRIES = 2;
-    for (int i = 0; i < NRETRIES; i++) {
+    do {
         m_dist.find_min(best_dist);
         m_shared.find_min(best_shared);
 
@@ -119,10 +118,7 @@ k_lsm<K, V, Rlx>::delete_min(V &val)
         if (!best_shared.empty() /* and best_dist is empty */) {
             return best_shared.take(val);
         }
-    }
-
-    /* Note that spy() is not called at this point since it is triggered in
-     * the dlsm if the peeked item was empty. */
+    } while (m_dist.spy() > 0);
 
     return false;
 }
