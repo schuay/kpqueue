@@ -135,18 +135,24 @@ block<K, V>::merge(const block<K, V> *lhs,
     while (l < lend) *dst++ = *l++;
     while (r < rend) *dst++ = *r++;
 
-    /* Prune. */
+    /* Prune. Both taken items and duplicate items (which are present in the block
+     * multiple times, occurs through spy()) are removed. */
 
     const size_t skipped_prunes = std::max(lhs->m_skipped_prunes, rhs->m_skipped_prunes);
     if (skipped_prunes > MAX_SKIPPED_PRUNES) {
+        const item<K, V> *prev_item = nullptr;  // Used to prune duplicate item copies.
+
         const auto end = dst;
         dst = m_block_items;
+
         for (auto src = dst; src < end; src++) {
-            if (src->taken()) {
+            const auto this_item = src->m_item;
+            if (src->taken() || this_item == prev_item) {
                 continue;
             } else if (src != dst) {
                 *dst = *src;
             }
+            prev_item = this_item;
             dst++;
         }
 
