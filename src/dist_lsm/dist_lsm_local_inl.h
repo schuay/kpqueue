@@ -21,6 +21,7 @@ template <class K, class V, int Rlx>
 dist_lsm_local<K, V, Rlx>::dist_lsm_local() :
     m_head(nullptr),
     m_tail(nullptr),
+    m_reserve(nullptr),
     m_cached_best(block<K, V>::peek_t::EMPTY())
 {
 }
@@ -125,7 +126,12 @@ dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
          * if we are about to merge into a block exceeding the relaxation bound.
          */
         slsm->insert(insert_block);
-        insert_block->set_unused();
+
+        /* Store the block locally in order to avoid excessive calls to spy(). */
+        if (m_reserve != nullptr) {
+            m_reserve->set_unused();
+        }
+        m_reserve = insert_block;
 
         if (other_block != nullptr) {
             other_block->m_next.store(nullptr, std::memory_order_relaxed);
@@ -184,8 +190,6 @@ dist_lsm_local<K, V, Rlx>::peek(typename block<K, V>::peek_t &best)
     for (auto i = m_head.load(std::memory_order_relaxed);
             i != nullptr;
             i = i->m_next.load(std::memory_order_relaxed)) {
-
-        auto candidate = i->peek();
         while (i->size() <= i->capacity() / 2) {
 
             /* Simply remove empty blocks. */
@@ -255,14 +259,18 @@ dist_lsm_local<K, V, Rlx>::peek(typename block<K, V>::peek_t &best)
                 j = k;
             }
             i = new_block;
-
-            candidate = i->peek();
         }
 
+        auto candidate = i->peek();
         if (best.m_item == nullptr ||
                 (candidate.m_item != nullptr && candidate.m_key < best.m_key)) {
             best = candidate;
         }
+    }
+
+    /* Fall back to taking items from the reserve block. */
+    if (best.empty() && m_reserve != nullptr) {
+        best = m_reserve->peek();
     }
 
     m_cached_best = best;
@@ -272,6 +280,8 @@ template <class K, class V, int Rlx>
 int
 dist_lsm_local<K, V, Rlx>::spy(dist_lsm<K, V, Rlx> *parent)
 {
+    static constexpr size_t MAX_SPY_POWER_OF_2 = 8;
+
     int num_spied = 0;
 
     if (m_tail != nullptr) {
@@ -302,7 +312,7 @@ dist_lsm_local<K, V, Rlx>::spy(dist_lsm<K, V, Rlx> *parent)
 
     // TODO: We use copy()'s undocumented behavior of only copying as many items
     // as fit into the block and failing silently.
-    const size_t insert_pow = std::min(MAX_SPY_POWER_OF_2, std::spied_block->power_of_2());
+    const size_t insert_pow = std::min(MAX_SPY_POWER_OF_2, spied_block->power_of_2());
     auto insert_block = m_block_storage.get_block(insert_pow);
     insert_block->copy(spied_block);
 
