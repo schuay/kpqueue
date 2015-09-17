@@ -320,7 +320,9 @@ dist_lsm_local<K, V, Rlx>::spy(dist_lsm<K, V, Rlx> *parent)
 
     /* TODO: It is not necessarily legal to not pass in the shared lsm here,
      * since spy() may be called even if the local lsm is not empty. */
-    merge_insert(insert_block, nullptr);
+    assert(m_head == nullptr && m_tail == nullptr);
+    m_head.store(insert_block, std::memory_order_relaxed);
+    m_tail = insert_block;
 
     return num_spied;
 }
