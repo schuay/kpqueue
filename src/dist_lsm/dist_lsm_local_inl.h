@@ -128,8 +128,10 @@ dist_lsm_local<K, V, Rlx>::merge_insert(block<K, V> *const new_block,
         slsm->insert(insert_block);
 
         /* Store the block locally in order to avoid excessive calls to spy(). */
+        if (m_reserve != nullptr) {
+            m_reserve->set_unused();
+        }
         m_reserve = insert_block;
-        insert_block->set_unused();
 
         if (other_block != nullptr) {
             other_block->m_next.store(nullptr, std::memory_order_relaxed);
