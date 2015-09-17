@@ -300,7 +300,10 @@ dist_lsm_local<K, V, Rlx>::spy(dist_lsm<K, V, Rlx> *parent)
 
     /* Got a block, add it to the local lsm. */
 
-    auto insert_block = m_block_storage.get_block(spied_block->power_of_2());
+    // TODO: We use copy()'s undocumented behavior of only copying as many items
+    // as fit into the block and failing silently.
+    const size_t insert_pow = std::min(MAX_SPY_POWER_OF_2, std::spied_block->power_of_2());
+    auto insert_block = m_block_storage.get_block(insert_pow);
     insert_block->copy(spied_block);
 
     num_spied = insert_block->size();
