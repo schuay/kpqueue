@@ -20,6 +20,7 @@
 #ifndef __ITREE_H
 #define __ITREE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define ITREE_MAX_DEPTH (8 * sizeof(uint64_t))
@@ -40,6 +41,7 @@ typedef struct __itree_t {
     uint64_t v;                 /**< The # of elements in the right subtree. */
     uint8_t h;                  /**< The height of this node. height(node without
                                  *   children) == 0. */
+    bool in_use;
 } itree_t;
 
 /**

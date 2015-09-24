@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "components/block.h"
+#include "util/interval_tree.h"
 #include "util/xorshf96.h"
 #include "block_pivots.h"
 #include "block_pool.h"
@@ -77,6 +78,7 @@ private:
     size_t m_size;
 
     block_pivots<K, V, Rlx, MAX_BLOCKS> m_pivots;
+    interval_tree m_itree;
 
     std::atomic<version_t> m_version;
 
