@@ -31,15 +31,35 @@ namespace kpq {
 class interval_tree
 {
 public:
-    void insert(const uint64_t index);
+    void insert(const uint64_t index) {
+        uint64_t dummy;
+        const int succeeded = itree_insert(index, &m_root, &dummy);
+        assert(succeeded), (void)succeeded;
+    }
+
     uint64_t count_before(const uint64_t index) const;
-    void clear();
+
+    void clear() {
+        postorder_free(m_root);
+        m_root = nullptr;
+    }
 
     struct reuse {
         bool operator()(const itree_t &t) const {
             return !t.in_use;
         }
     };
+
+private:
+    void postorder_free(itree_t *t) {
+        if (t == nullptr) {
+            return;
+        }
+
+        postorder_free(t->l);
+        postorder_free(t->r);
+        t->in_use = false;
+    }
 
 private:
     itree_t *m_root;
