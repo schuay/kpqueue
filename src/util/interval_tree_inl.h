@@ -34,20 +34,8 @@ interval_tree::count_before(const uint64_t index) const
 void
 interval_tree::clear()
 {
-    postorder_free(m_root);
+    itree_free(m_root);
     m_root = nullptr;
-}
-
-void
-interval_tree::postorder_free(itree_t *t)
-{
-    if (t == nullptr) {
-        return;
-    }
-
-    postorder_free(t->l);
-    postorder_free(t->r);
-    t->in_use = false;
 }
 
 int
@@ -62,8 +50,8 @@ interval_tree::itree_insert(const uint64_t index,
 
     int ret = _itree_insert(index, root, holes, &util);
 
-    if (util.l != NULL) {
-        free(util.l);
+    if (util.l != nullptr) {
+        util.l->in_use = false;
     }
 
     return ret;
@@ -73,11 +61,10 @@ int
 interval_tree::_itree_new_node(const uint64_t index,
                                itree_t **root)
 {
-    itree_t *droot = (itree_t *)calloc(1, sizeof(itree_t));
-    if (droot == NULL) {
-        perror("calloc");
-        return -1;
-    }
+    itree_t *droot = m_allocator.acquire();
+    assert (droot != nullptr);
+
+    memset(droot, 0, sizeof(*droot));
     droot->k1 = index;
     droot->k2 = index;
     *root = droot;
@@ -88,7 +75,7 @@ interval_tree::_itree_new_node(const uint64_t index,
  * Extends node by adding index to the node interval.
  *
  * Preconditions:
- *  * node != NULL.
+ *  * node != nullptr.
  *  * index is immediately adjacent to the node interval.
  *
  * Postconditions:
@@ -111,7 +98,7 @@ interval_tree::_itree_extend_node(const uint64_t index,
  * Merges lower into upper. Lower is *not* deleted.
  *
  * Preconditions:
- *  * lower, upper != NULL.
+ *  * lower, upper != nullptr.
  *  * upper->k2 + 1 == lower->k1 - 1 OR
  *    upper->k1 - 1 == lower->k2 + 1
  *
@@ -134,7 +121,7 @@ interval_tree::_itree_merge_nodes(itree_t *upper,
 inline int8_t
 interval_tree::_itree_height(const itree_t *node)
 {
-    return (node == NULL) ? -1 : node->h;
+    return (node == nullptr) ? -1 : node->h;
 }
 
 inline void
@@ -149,7 +136,7 @@ interval_tree::_itree_set_height(itree_t *node)
 inline uint64_t
 interval_tree::_itree_count(const itree_t *root)
 {
-    if (root == NULL) {
+    if (root == nullptr) {
         return 0;
     }
     return root->k2 - root->k1 + 1 + root->v + _itree_count(root->r);
@@ -159,7 +146,7 @@ interval_tree::_itree_count(const itree_t *root)
  * Rebalances the subtree.
  *
  * Precondition:
- *  * root != NULL.
+ *  * root != nullptr.
  *  * The subtrees root->l and root->r are balanced.
  *
  * Postcondition:
@@ -250,7 +237,7 @@ interval_tree::_itree_descend_l(const uint64_t index,
     *holes += droot->v + droot->k2 - droot->k1 + 1;
 
     if (droot->k1 == index + 1) {
-        if (util->u == NULL) {
+        if (util->u == nullptr) {
             util->u = droot;
         } else {
             util->l = droot;
@@ -260,7 +247,7 @@ interval_tree::_itree_descend_l(const uint64_t index,
     if (ret != 0) { return ret; }
 
     /* Remove the lower node. */
-    if (util->l != NULL && util->l == droot->l) {
+    if (util->l != nullptr && util->l == droot->l) {
         const int in_left_subtree = (index == util->l->k2 + 1);
         droot->l = in_left_subtree ? util->l->l : util->l->r;
     }
@@ -277,17 +264,17 @@ interval_tree::_itree_descend_r(const uint64_t index,
     itree_t *droot = *root;
 
     if (droot->k2 == index - 1) {
-        if (util->u == NULL) {
+        if (util->u == nullptr) {
             util->u = droot;
         } else {
             util->l = droot;
         }
     }
 
-    const int below_merge = (util->u != NULL);
+    const int below_merge = (util->u != nullptr);
 
     /* Index was added as a new descendant node. */
-    if (util->u == NULL && util->u != droot) {
+    if (util->u == nullptr && util->u != droot) {
         droot->v++;
     }
 
@@ -295,13 +282,13 @@ interval_tree::_itree_descend_r(const uint64_t index,
     if (ret != 0) { return ret; }
 
     /* Remove the lower node. */
-    if (util->l != NULL && util->l == droot->r) {
+    if (util->l != nullptr && util->l == droot->r) {
         const int in_left_subtree = (index == util->l->k2 + 1);
         droot->r = in_left_subtree ? util->l->l : util->l->r;
     }
 
     /* Adjust the subtree sum after a merge. */
-    if (util->l != NULL && util->l != droot && below_merge) {
+    if (util->l != nullptr && util->l != droot && below_merge) {
         droot->v -= util->l->k2 - util->l->k1 + 1;
     }
 
@@ -322,19 +309,19 @@ interval_tree::_itree_insert(const uint64_t index,
     int ret = 0;
 
     /* Merge two existing nodes. */
-    if (droot == NULL && util->l != NULL) {
+    if (droot == nullptr && util->l != nullptr) {
         _itree_merge_nodes(util->u, util->l);
         return 0;
     }
 
     /* Add to existing adjacent node. */
-    if (droot == NULL && util->u != NULL) {
+    if (droot == nullptr && util->u != nullptr) {
         _itree_extend_node(index, util->u);
         return 0;
     }
 
     /* New node. */
-    if (droot == NULL) {
+    if (droot == nullptr) {
         return _itree_new_node(index, root);
     }
 
@@ -364,12 +351,12 @@ interval_tree::_itree_insert(const uint64_t index,
 void
 interval_tree::itree_free(itree_t *root)
 {
-    if (root == NULL) {
+    if (root == nullptr) {
         return;
     }
 
     itree_free(root->l);
     itree_free(root->r);
 
-    free(root);
+    root->in_use = false;
 }

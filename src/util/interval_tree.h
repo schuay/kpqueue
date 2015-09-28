@@ -53,9 +53,6 @@ public:
     };
 
 private:
-    void postorder_free(itree_t *t);
-
-private:
     int itree_insert(const uint64_t index,
                      itree_t **root,
                      uint64_t *holes);
