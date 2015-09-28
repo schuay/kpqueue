@@ -265,29 +265,12 @@ block_array<K, V, Rlx>::peek()
             ret = *best;
             return ret;
         } else if (block_ix < m_size) {
-            /* The selected item has already been taken, fall back to removing
-             * the minimal item within the same block (possibly the same item). */
+            /* The selected item has already been taken, mark it as taken in the interval
+             * tree and repeat. */
 
-            const size_t count_in_block = m_pivots.count_in(block_ix);
-            assert(count_in_block > 0);
-
-            const size_t first_in_block = m_pivots.nth_ix_in(0, block_ix);
-            best = b->peek_nth(first_in_block);
-
-            for (size_t i = 0; i < count_in_block; i++, best++) {
-                if (!best->taken()) {
-                    /* Simply taking the first item here would bias peek()
-                     * towards the first item in the largest block. Instead,
-                     * retry with a random selection.
-                     * TODO: A possibly optimization is to retry on level up
-                     * the callstack, since we might be doing unnecessary
-                     * work if our local array copy is out of date.
-                     */
-                    break;
-                } else {
-                    m_pivots.mark_first_taken_in(block_ix);
-                }
-            }
+            // TODO: Refactor to avoid retreading the entire loop if the selected element
+            // is taken.
+            m_pivots.mark_taken_in(selected_element, block_ix);
         }
     }
 }

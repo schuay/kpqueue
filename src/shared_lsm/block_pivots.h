@@ -20,6 +20,8 @@
 #ifndef __BLOCK_PIVOTS_H
 #define __BLOCK_PIVOTS_H
 
+#include "util/interval_tree.h"
+
 namespace kpq {
 
 // TODO: Better naming, pivots is very undescriptive to me. Item range? Index boundaries
@@ -47,7 +49,7 @@ public:
     size_t nth_ix_in(const size_t relative_element_ix,
                      const size_t block_ix) const;
 
-    void mark_first_taken_in(const size_t block_ix);
+    void mark_taken_in(const size_t element_ix, const size_t block_ix);
 
     int pivot_of(block<K, V> *block) const;
 
@@ -77,6 +79,8 @@ private:
     int m_pivots[MaxBlocks];
     int m_first_in_block[MaxBlocks];
     K m_maximal_pivot;
+
+    interval_tree m_itrees[MaxBlocks];
 
     /**
      * A cache used to reduce the number of required count recalculations. m_count_for_size

@@ -67,6 +67,7 @@ interval_tree::_itree_new_node(const uint64_t index,
     memset(droot, 0, sizeof(*droot));
     droot->k1 = index;
     droot->k2 = index;
+    droot->in_use = true;
     *root = droot;
     return 0;
 }
