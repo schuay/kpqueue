@@ -21,7 +21,7 @@ void
 interval_tree::insert(const uint64_t index)
 {
     uint64_t dummy;
-    const int succeeded = itree_insert(index, &m_root, &dummy);
+    const bool succeeded = (itree_insert(index, &m_root, &dummy) == 0);
     assert(succeeded), (void)succeeded;
 }
 
