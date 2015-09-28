@@ -20,8 +20,7 @@
 void
 interval_tree::insert(const uint64_t index)
 {
-    uint64_t dummy;
-    const bool succeeded = (itree_insert(index, &m_root, &dummy) == 0);
+    const bool succeeded = (itree_insert(index, &m_root) == 0);
     assert(succeeded), (void)succeeded;
 }
 
@@ -40,15 +39,12 @@ interval_tree::clear()
 
 int
 interval_tree::itree_insert(const uint64_t index,
-                            itree_t **root,
-                            uint64_t *holes)
+                            itree_t **root)
 {
     itree_util_t util;
     memset(&util, 0, sizeof(itree_util_t));
 
-    *holes = 0;
-
-    int ret = _itree_insert(index, root, holes, &util);
+    int ret = _itree_insert(index, root, &util);
 
     if (util.l != nullptr) {
         util.l->in_use = false;
@@ -230,7 +226,6 @@ interval_tree::_itree_rebalance(itree_t **root)
 int
 interval_tree::_itree_descend_l(const uint64_t index,
                                 itree_t **root,
-                                uint64_t *holes,
                                 itree_util_t *util)
 {
     itree_t *droot = *root;
@@ -250,7 +245,7 @@ interval_tree::_itree_descend_l(const uint64_t index,
         droot->v++;
     }
 
-    int ret = _itree_insert(index, &droot->l, holes, util);
+    int ret = _itree_insert(index, &droot->l, util);
     if (ret != 0) { return ret; }
 
     /* Remove the lower node. */
@@ -270,12 +265,9 @@ interval_tree::_itree_descend_l(const uint64_t index,
 int
 interval_tree::_itree_descend_r(const uint64_t index,
                                 itree_t **root,
-                                uint64_t *holes,
                                 itree_util_t *util)
 {
     itree_t *droot = *root;
-
-    *holes += droot->v + droot->k2 - droot->k1 + 1;
 
     if (droot->k2 == index - 1) {
         if (util->u == nullptr) {
@@ -285,7 +277,7 @@ interval_tree::_itree_descend_r(const uint64_t index,
         }
     }
 
-    int ret = _itree_insert(index, &droot->r, holes, util);
+    int ret = _itree_insert(index, &droot->r, util);
     if (ret != 0) { return ret; }
 
     /* Remove the lower node. */
@@ -304,7 +296,6 @@ interval_tree::_itree_descend_r(const uint64_t index,
 int
 interval_tree::_itree_insert(const uint64_t index,
                              itree_t **root,
-                             uint64_t *holes,
                              itree_util_t *util)
 {
     itree_t *droot = *root;
@@ -329,11 +320,11 @@ interval_tree::_itree_insert(const uint64_t index,
 
     /* Descend into left or right subtree. */
     if (droot->k1 > index) {
-        if ((ret = _itree_descend_l(index, root, holes, util)) != 0) {
+        if ((ret = _itree_descend_l(index, root, util)) != 0) {
             return ret;
         }
     } else if (index > droot->k2) {
-        if ((ret = _itree_descend_r(index, root, holes, util)) != 0) {
+        if ((ret = _itree_descend_r(index, root, util)) != 0) {
             return ret;
         }
     } else {

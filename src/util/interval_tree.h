@@ -54,14 +54,12 @@ public:
 
 private:
     int itree_insert(const uint64_t index,
-                     itree_t **root,
-                     uint64_t *holes);
+                     itree_t **root);
     void itree_free(itree_t *root);
 
     int
     _itree_insert(const uint64_t index,
                   itree_t **root,
-                  uint64_t *holes,
                   itree_util_t *util);
     int
     _itree_new_node(const uint64_t index,
@@ -83,12 +81,10 @@ private:
     int
     _itree_descend_l(const uint64_t index,
                      itree_t **root,
-                     uint64_t *holes,
                      itree_util_t *util);
     int
     _itree_descend_r(const uint64_t index,
                      itree_t **root,
-                     uint64_t *holes,
                      itree_util_t *util);
 
 private:
