@@ -30,7 +30,7 @@ private:
     typedef struct __itree_t {
         struct __itree_t *l, *r;    /**< The left and right child nodes. */
         uint64_t k1, k2;            /**< The key interval [k1, k2]. */
-        uint64_t v;                 /**< The # of elements in the right subtree. */
+        uint64_t v;                 /**< The # of elements in the left subtree. */
         uint8_t h;                  /**< The height of this node. height(node without
                                      *   children) == 0. */
         bool in_use;

@@ -178,7 +178,7 @@ interval_tree::_itree_rebalance(itree_t **root)
             r->l = droot->r->r;
             droot->r->r = r;
 
-            droot->r->v += r->v + r->k2 - r->k1 + 1;
+            r->v = _itree_count(r->l);
 
             _itree_set_height(r);
 
@@ -191,7 +191,7 @@ interval_tree::_itree_rebalance(itree_t **root)
         r->l = droot;
         *root = r;
 
-        droot->v = _itree_count(droot->r);
+        r->v += droot->v + droot->k2 - droot->k1 + 1;
 
         _itree_set_height(droot);
         _itree_set_height(r);
@@ -207,7 +207,7 @@ interval_tree::_itree_rebalance(itree_t **root)
             l->r = droot->l->l;
             droot->l->l = l;
 
-            l->v = _itree_count(l->r);
+            droot->l->v += l->v + l->k2 - l->k1 + 1;
 
             _itree_set_height(l);
 
@@ -220,7 +220,7 @@ interval_tree::_itree_rebalance(itree_t **root)
         l->r = droot;
         *root = l;
 
-        l->v += droot->v + droot->k2 - droot->k1 + 1;
+        droot->v = _itree_count(droot->l);
 
         _itree_set_height(droot);
         _itree_set_height(l);
@@ -235,36 +235,7 @@ interval_tree::_itree_descend_l(const uint64_t index,
 {
     itree_t *droot = *root;
 
-    *holes += droot->v + droot->k2 - droot->k1 + 1;
-
     if (droot->k1 == index + 1) {
-        if (util->u == nullptr) {
-            util->u = droot;
-        } else {
-            util->l = droot;
-        }
-    }
-    int ret = _itree_insert(index, &droot->l, holes, util);
-    if (ret != 0) { return ret; }
-
-    /* Remove the lower node. */
-    if (util->l != nullptr && util->l == droot->l) {
-        const int in_left_subtree = (index == util->l->k2 + 1);
-        droot->l = in_left_subtree ? util->l->l : util->l->r;
-    }
-
-    return 0;
-}
-
-int
-interval_tree::_itree_descend_r(const uint64_t index,
-                                itree_t **root,
-                                uint64_t *holes,
-                                itree_util_t *util)
-{
-    itree_t *droot = *root;
-
-    if (droot->k2 == index - 1) {
         if (util->u == nullptr) {
             util->u = droot;
         } else {
@@ -279,6 +250,41 @@ interval_tree::_itree_descend_r(const uint64_t index,
         droot->v++;
     }
 
+    int ret = _itree_insert(index, &droot->l, holes, util);
+    if (ret != 0) { return ret; }
+
+    /* Remove the lower node. */
+    if (util->l != nullptr && util->l == droot->l) {
+        const int in_left_subtree = (index == util->l->k2 + 1);
+        droot->l = in_left_subtree ? util->l->l : util->l->r;
+    }
+
+    /* Adjust the subtree sum after a merge. */
+    if (util->l != nullptr && util->l != droot && below_merge) {
+        droot->v -= util->l->k2 - util->l->k1 + 1;
+    }
+
+    return 0;
+}
+
+int
+interval_tree::_itree_descend_r(const uint64_t index,
+                                itree_t **root,
+                                uint64_t *holes,
+                                itree_util_t *util)
+{
+    itree_t *droot = *root;
+
+    *holes += droot->v + droot->k2 - droot->k1 + 1;
+
+    if (droot->k2 == index - 1) {
+        if (util->u == nullptr) {
+            util->u = droot;
+        } else {
+            util->l = droot;
+        }
+    }
+
     int ret = _itree_insert(index, &droot->r, holes, util);
     if (ret != 0) { return ret; }
 
@@ -286,11 +292,6 @@ interval_tree::_itree_descend_r(const uint64_t index,
     if (util->l != nullptr && util->l == droot->r) {
         const int in_left_subtree = (index == util->l->k2 + 1);
         droot->r = in_left_subtree ? util->l->l : util->l->r;
-    }
-
-    /* Adjust the subtree sum after a merge. */
-    if (util->l != nullptr && util->l != droot && below_merge) {
-        droot->v -= util->l->k2 - util->l->k1 + 1;
     }
 
     return 0;
