@@ -239,7 +239,8 @@ block_pivots<K, V, Rlx, MaxBlocks>::nth_ix_in(const size_t relative_element_ix,
                                               const size_t block_ix) const
 {
     assert(block_ix < MaxBlocks);
-    return m_first_in_block[block_ix] + relative_element_ix;
+    const int ix = m_itrees[block_ix].nth_untaken_ix(relative_element_ix);
+    return ix;
 }
 
 template <class K, class V, int Rlx, int MaxBlocks>
