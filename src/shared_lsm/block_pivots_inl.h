@@ -42,10 +42,10 @@ block_pivots<K, V, Rlx, MaxBlocks>::operator=(const block_pivots<K, V, Rlx, MaxB
     memcpy(m_first_in_block, that.m_first_in_block, sizeof(m_first_in_block));
     m_maximal_pivot = that.m_maximal_pivot;
 
-    // TODO: Copy on write.
-    for (int i = 0; i < MaxBlocks; i++) {
-        m_itrees[i] = that.m_itrees[i];
-    }
+//    // TODO: Copy on write.
+//    for (int i = 0; i < MaxBlocks; i++) {
+//        m_itrees[i] = that.m_itrees[i];
+//    }
 
     m_count = that.m_count;
     m_count_for_size = that.m_count_for_size;
