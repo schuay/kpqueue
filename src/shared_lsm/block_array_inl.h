@@ -42,6 +42,7 @@ void
 block_array<K, V, Rlx>::block_insert(const size_t block_ix,
                                      block<K, V> *block)
 {
+    // TODO: Handle itrees.
     memmove(&m_blocks[block_ix + 1],
             &m_blocks[block_ix],
             sizeof(m_blocks[0]) * (m_size - block_ix));
@@ -54,6 +55,7 @@ void
 block_array<K, V, Rlx>::block_set(const size_t block_ix,
                                   block<K, V> *block)
 {
+    // TODO: Handle itrees.
     // TODO: More efficient pivot recalculation.
     m_blocks[block_ix] = block;
     m_pivots.set(block_ix, block->first(), m_pivots.pivot_of(block));

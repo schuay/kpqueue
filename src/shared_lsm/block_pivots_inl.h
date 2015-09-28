@@ -42,6 +42,11 @@ block_pivots<K, V, Rlx, MaxBlocks>::operator=(const block_pivots<K, V, Rlx, MaxB
     memcpy(m_first_in_block, that.m_first_in_block, sizeof(m_first_in_block));
     m_maximal_pivot = that.m_maximal_pivot;
 
+    // TODO: Copy on write.
+    for (int i = 0; i < MaxBlocks; i++) {
+        m_itrees[i] = that.m_itrees[i];
+    }
+
     m_count = that.m_count;
     m_count_for_size = that.m_count_for_size;
 
@@ -226,8 +231,8 @@ size_t
 block_pivots<K, V, Rlx, MaxBlocks>::count_in(const size_t block_ix) const
 {
     assert(block_ix < MaxBlocks);
-    assert(m_first_in_block[block_ix] <= m_pivots[block_ix]);
-    return m_pivots[block_ix] - m_first_in_block[block_ix];
+    const size_t pivot = m_pivots[block_ix];
+    return pivot - m_itrees[block_ix].count_before(pivot);
 }
 
 template <class K, class V, int Rlx, int MaxBlocks>
