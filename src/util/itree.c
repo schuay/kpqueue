@@ -211,7 +211,7 @@ _itree_count(const itree_t *root)
     if (root == NULL) {
         return 0;
     }
-    return root->k2 - root->k1 + 1 + root->v + _itree_count(root->l);
+    return root->k2 - root->k1 + 1 + root->v + _itree_count(root->r);
 }
 
 /**

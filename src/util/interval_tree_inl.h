@@ -17,42 +17,35 @@
  *  along with kpqueue.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __INTERVAL_TREE_H
-#define __INTERVAL_TREE_H
-
-#include "mm.h"
-
-extern "C" {
-#include "itree.h"
+void
+interval_tree::insert(const uint64_t index)
+{
+    uint64_t dummy;
+    const int succeeded = itree_insert(index, &m_root, &dummy);
+    assert(succeeded), (void)succeeded;
 }
 
-namespace kpq {
-
-class interval_tree
+uint64_t
+interval_tree::count_before(const uint64_t index) const
 {
-public:
-    void insert(const uint64_t index);
-    uint64_t count_before(const uint64_t index) const;
-    void clear();
+    return index;
+}
 
-public:
-    struct reuse {
-        bool operator()(const itree_t &t) const {
-            return !t.in_use;
-        }
-    };
+void
+interval_tree::clear()
+{
+    postorder_free(m_root);
+    m_root = nullptr;
+}
 
-private:
-    void postorder_free(itree_t *t);
+void
+interval_tree::postorder_free(itree_t *t)
+{
+    if (t == nullptr) {
+        return;
+    }
 
-private:
-    itree_t *m_root;
-
-    item_allocator<itree_t, reuse, 32> m_allocator;
-};
-
-#include "interval_tree_inl.h"
-
-} // namespace kpq
-
-#endif /*  __INTERVAL_TREE_H */
+    postorder_free(t->l);
+    postorder_free(t->r);
+    t->in_use = false;
+}
