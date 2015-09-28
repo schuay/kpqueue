@@ -22,7 +22,6 @@
 template <class K, class V, int Rlx, int MaxBlocks>
 block_pivots<K, V, Rlx, MaxBlocks>::block_pivots() :
     m_pivots { 0 },
-    m_first_in_block { 0 },
     m_maximal_pivot(std::numeric_limits<K>::min()),
     m_count { 0 },
     m_count_for_size { INVALID_COUNT_FOR_SIZE }
@@ -39,7 +38,6 @@ block_pivots<K, V, Rlx, MaxBlocks> &
 block_pivots<K, V, Rlx, MaxBlocks>::operator=(const block_pivots<K, V, Rlx, MaxBlocks> &that)
 {
     memcpy(m_pivots, that.m_pivots, sizeof(m_pivots));
-    memcpy(m_first_in_block, that.m_first_in_block, sizeof(m_first_in_block));
     m_maximal_pivot = that.m_maximal_pivot;
 
     for (int i = 0; i < MaxBlocks; i++) {
@@ -66,10 +64,10 @@ block_pivots<K, V, Rlx, MaxBlocks>::shrink(block<K, V> **blocks,
     for (size_t i = 0; i < size; i++) {
         auto b = blocks[i];
         size_t candidate_ix;
-        const size_t first = m_first_in_block[i];
-        auto candidate  = b->peek(candidate_ix, first);
+        const size_t first = nth_ix_in(0, i);
+        auto candidate = b->peek(candidate_ix, first);
 
-        m_first_in_block[i] = m_pivots[i] = std::max(b->first(), first);
+        m_pivots[i] = std::max(b->first(), first);
 
         if ((best.empty() && !candidate.empty()) ||
                 (!best.empty() && !candidate.empty() && candidate.m_key < best.m_key)) {
@@ -160,7 +158,7 @@ block_pivots<K, V, Rlx, MaxBlocks>::resize(const int initial_range_size,
             const auto end = it + last - pivot;
             for (; it < end; it++, pivot++) {
                 if (it->taken()) {
-                    continue;
+                    continue; // TODO: Should update interval tree here.
                 } else if (it->m_key > mid) {
                     break;
                 } else {
@@ -274,26 +272,22 @@ template <class K, class V, int Rlx, int MaxBlocks>
 void
 block_pivots<K, V, Rlx, MaxBlocks>::insert(const size_t block_ix,
                                            const size_t size,
-                                           const int first_in_block,
                                            const int pivot)
 {
+    // TODO: itree handling through pointer array.
     memmove(&m_pivots[block_ix + 1],
             &m_pivots[block_ix],
             sizeof(m_pivots[0]) * (size - block_ix));
-    memmove(&m_first_in_block[block_ix + 1],
-            &m_first_in_block[block_ix],
-            sizeof(m_first_in_block[0]) * (size - block_ix));
-    set(block_ix, first_in_block, pivot);
+    set(block_ix, pivot);
 }
 
 template <class K, class V, int Rlx, int MaxBlocks>
 void
 block_pivots<K, V, Rlx, MaxBlocks>::set(const size_t block_ix,
-                                        const int first_in_block,
                                         const int pivot)
 {
-    m_first_in_block[block_ix] = first_in_block;
     m_pivots[block_ix] = pivot;
+    m_itrees[block_ix].clear();
     m_count_for_size = INVALID_COUNT_FOR_SIZE;
 }
 
@@ -302,11 +296,11 @@ void
 block_pivots<K, V, Rlx, MaxBlocks>::copy(const size_t src_ix,
                                          const size_t dst_ix)
 {
+    // TODO: itree handling through pointer array.
     if (src_ix == dst_ix) {
         return;
     }
 
-    m_first_in_block[dst_ix] = m_first_in_block[src_ix];
     m_pivots[dst_ix] = m_pivots[src_ix];
     m_count_for_size = INVALID_COUNT_FOR_SIZE;
 }

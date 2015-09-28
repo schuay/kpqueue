@@ -42,12 +42,11 @@ void
 block_array<K, V, Rlx>::block_insert(const size_t block_ix,
                                      block<K, V> *block)
 {
-    // TODO: Handle itrees.
     memmove(&m_blocks[block_ix + 1],
             &m_blocks[block_ix],
             sizeof(m_blocks[0]) * (m_size - block_ix));
     m_blocks[block_ix] = block;
-    m_pivots.insert(block_ix, m_size, block->first(), m_pivots.pivot_of(block));
+    m_pivots.insert(block_ix, m_size, m_pivots.pivot_of(block));
 }
 
 template <class K, class V, int Rlx>
@@ -55,10 +54,9 @@ void
 block_array<K, V, Rlx>::block_set(const size_t block_ix,
                                   block<K, V> *block)
 {
-    // TODO: Handle itrees.
     // TODO: More efficient pivot recalculation.
     m_blocks[block_ix] = block;
-    m_pivots.set(block_ix, block->first(), m_pivots.pivot_of(block));
+    m_pivots.set(block_ix, m_pivots.pivot_of(block));
 }
 
 template <class K, class V, int Rlx>

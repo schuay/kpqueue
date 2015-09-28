@@ -55,9 +55,8 @@ public:
 
     void insert(const size_t block_ix,
                 const size_t size,
-                const int first_in_block,
                 const int pivot);
-    void set(const size_t block_ix, const int first_in_block, const int pivot);
+    void set(const size_t block_ix, const int pivot);
     void copy(const size_t src_ix, const size_t dst_ix);
 
 private:
@@ -77,7 +76,6 @@ private:
      * Pivots should be absolute indices (not dependent on block's m_first/m_last).
      */
     int m_pivots[MaxBlocks];
-    int m_first_in_block[MaxBlocks];
     K m_maximal_pivot;
 
     interval_tree m_itrees[MaxBlocks];
