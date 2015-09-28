@@ -113,7 +113,7 @@ interval_tree::copy(const itree_t *that)
     }
 
     itree_t *node = m_allocator.acquire();
-    node->in_use = true;
+    memset(node, 0, sizeof(*node));
 
     node->k1 = that->k1;
     node->k2 = that->k2;
@@ -135,7 +135,7 @@ interval_tree::itree_insert(const uint64_t index,
     int ret = _itree_insert(index, root, &util);
 
     if (util.l != nullptr) {
-        util.l->in_use = false;
+        util.l->reusable = true;
     }
 
     return ret;
@@ -146,12 +146,10 @@ interval_tree::_itree_new_node(const uint64_t index,
                                itree_t **root)
 {
     itree_t *droot = m_allocator.acquire();
-    assert (droot != nullptr);
-
     memset(droot, 0, sizeof(*droot));
+
     droot->k1 = index;
     droot->k2 = index;
-    droot->in_use = true;
     *root = droot;
     return 0;
 }
@@ -439,5 +437,5 @@ interval_tree::itree_free(itree_t *root)
     itree_free(root->l);
     itree_free(root->r);
 
-    root->in_use = false;
+    root->reusable = true;
 }

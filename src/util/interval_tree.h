@@ -41,7 +41,7 @@ private:
         uint64_t v;                 /**< The # of elements in the left subtree. */
         uint8_t h;                  /**< The height of this node. height(node without
                                      *   children) == 0. */
-        bool in_use;
+        bool reusable;
     } itree_t;
 
     typedef struct {
@@ -70,7 +70,7 @@ public:
 public:
     struct reuse {
         bool operator()(const itree_t &t) const {
-            return !t.in_use;
+            return t.reusable;
         }
     };
 
