@@ -20,7 +20,6 @@ add_executable(random random.cpp util.cpp)
 target_link_libraries(random
     ${CMAKE_THREAD_LIBS_INIT}
     ${HWLOC_LIBRARIES}
-    itree
     linden
     sequence_heap
     sequential_lsm
@@ -33,7 +32,6 @@ add_executable(shortest_paths shortest_paths.cpp util.cpp)
 target_link_libraries(shortest_paths
     ${CMAKE_THREAD_LIBS_INIT}
     ${HWLOC_LIBRARIES}
-    itree
     linden
     sequence_heap
     sequential_lsm

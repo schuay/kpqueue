@@ -9,7 +9,3 @@ endif()
 add_library(thread_local_ptr STATIC
     thread_local_ptr.cpp
 )
-
-add_library(itree STATIC
-    itree.c
-)
