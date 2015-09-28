@@ -25,9 +25,64 @@ interval_tree::insert(const uint64_t index)
 }
 
 uint64_t
-interval_tree::count_before(const uint64_t index) const
+interval_tree::num_untaken_before(const uint64_t index) const
 {
-    return index;
+    const uint64_t num_taken = _itree_count(m_root);
+    assert(num_taken <= index);
+    return index - num_taken;
+}
+
+uint64_t
+interval_tree::nth_untaken_ix(const uint64_t n) const
+{
+    if (m_root == nullptr) {
+        return n;
+    }
+
+    const int ix = _nth_untaken_ix(n, m_root, 0);
+    assert(ix >= 0);
+    return ix;
+}
+
+int
+interval_tree::_nth_untaken_ix(const uint64_t n,
+                               const itree_t *node,
+                               const uint64_t taken_to_left_in_supertree) const
+{
+    if (node == nullptr) {
+        /* Denotes one of two possibilities: either the given index must be
+         * calculated further up the tree (if this interval is to the right
+         * of a contiguous range of untaken indices in which the desired index
+         * is located); or that the tree is empty, in which case the desired index
+         * is n. */
+        return -1;
+    }
+
+    /* The number of untaken element to the left of this interval. */
+    const uint64_t num_untaken = node->k1 - taken_to_left_in_supertree - node->v;
+
+    if (num_untaken == n) {
+        /* The desired index is exactly adjacent to this interval. */
+        return node->k2 + 1;
+    } else if (num_untaken < n) {
+        /* The desired index is somewhere to the right of this interval.
+         * This case is complicated by the fact that we might need to base
+         * calculation of the index on this interval, but we only find out
+         * upon descending further into the tree. */
+        const uint64_t taken_in_current_subtree =
+                taken_to_left_in_supertree + node->v + node->k2 - node->k1 + 1;
+        const int ret = _nth_untaken_ix(n, node->r, taken_in_current_subtree);
+        if (ret == -1) {
+            /* This means the current interval is adjacent to the desired index
+             * and may be used as a base to calculate it. */
+            return node->k2 + 1 + n - num_untaken;
+        } else {
+            return ret;
+        }
+    } else { /* num_untaken > n */
+        /* The desired index is somewhere to the left. */
+        return _nth_untaken_ix(n, node->l, taken_to_left_in_supertree);
+    }
 }
 
 void
@@ -116,7 +171,7 @@ interval_tree::_itree_merge_nodes(itree_t *upper,
 }
 
 inline int8_t
-interval_tree::_itree_height(const itree_t *node)
+interval_tree::_itree_height(const itree_t *node) const
 {
     return (node == nullptr) ? -1 : node->h;
 }
@@ -131,7 +186,7 @@ interval_tree::_itree_set_height(itree_t *node)
  * Returns the count of elements in the tree.
  */
 inline uint64_t
-interval_tree::_itree_count(const itree_t *root)
+interval_tree::_itree_count(const itree_t *root) const
 {
     if (root == nullptr) {
         return 0;

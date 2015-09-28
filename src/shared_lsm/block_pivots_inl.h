@@ -231,8 +231,7 @@ size_t
 block_pivots<K, V, Rlx, MaxBlocks>::count_in(const size_t block_ix) const
 {
     assert(block_ix < MaxBlocks);
-    const size_t pivot = m_pivots[block_ix];
-    return pivot - m_itrees[block_ix].count_before(pivot);
+    return m_itrees[block_ix].num_untaken_before(m_pivots[block_ix]);
 }
 
 template <class K, class V, int Rlx, int MaxBlocks>

@@ -24,6 +24,14 @@
 
 namespace kpq {
 
+/**
+ * A specialized interval tree implementation which stores the number of elements
+ * within the left subtree in each node. The value domain is [0, inf[,
+ * i.e. nonnegative.
+ *
+ * In our case, values within the tree are element indices which are known taken.
+ * All other indices may be either taken or not.
+ */
 class interval_tree
 {
 private:
@@ -41,9 +49,23 @@ private:
     } itree_util_t;
 
 public:
+    /** Adds the given index to the set. */
     void insert(const uint64_t index);
-    uint64_t count_before(const uint64_t index) const;
+
+    /** Returns the number of untaken items before the given index. */
+    uint64_t num_untaken_before(const uint64_t index) const;
+
+    /** Returns the n'th untaken index. For example, if n = 1, returns an index
+     * i such that i itself is untaken (or at least not known taken) and there are
+     * i other untaken indices before it. Complexity is log(# nodes in tree). */
+    uint64_t nth_untaken_ix(const uint64_t n) const;
+
+    /** Clears the set. */
     void clear();
+
+    /** Copies the given tree by copy-on-write, i.e. initially copy
+     * only the pointer, and the full tree only on writes. */
+    interval_tree &operator=(const interval_tree &that);
 
 public:
     struct reuse {
@@ -53,6 +75,11 @@ public:
     };
 
 private:
+    int _nth_untaken_ix(const uint64_t n,
+                        const itree_t *node,
+                        const uint64_t taken_to_left_in_supertree) const;
+
+private: /* Raw itree methods. */
     int itree_insert(const uint64_t index,
                      itree_t **root);
     void itree_free(itree_t *root);
@@ -73,11 +100,11 @@ private:
     void
     _itree_rebalance(itree_t **root);
     inline int8_t
-    _itree_height(const itree_t *node);
+    _itree_height(const itree_t *node) const;
     inline void
     _itree_set_height(itree_t *node);
     inline uint64_t
-    _itree_count(const itree_t *root);
+    _itree_count(const itree_t *root) const;
     int
     _itree_descend_l(const uint64_t index,
                      itree_t **root,
