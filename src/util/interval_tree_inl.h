@@ -35,12 +35,13 @@ interval_tree::num_untaken_before(const uint64_t index) const
 uint64_t
 interval_tree::nth_untaken_ix(const uint64_t n) const
 {
-    if (m_root == nullptr) {
+    const int ix = _nth_untaken_ix(n, m_root, 0);
+    if (ix < 0) {
+        /* May occur in two cases: either the tree is empty, or we only
+         * descend into the left subtree. Simply return n in both cases. */
         return n;
     }
 
-    const int ix = _nth_untaken_ix(n, m_root, 0);
-    assert(ix >= 0);
     return ix;
 }
 
