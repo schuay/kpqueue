@@ -105,6 +105,12 @@ interval_tree::operator=(const interval_tree &that)
     return *this;
 }
 
+void
+interval_tree::swap(interval_tree &that)
+{
+    std::swap(m_root, that.m_root);
+}
+
 typename interval_tree::itree_t *
 interval_tree::copy(const itree_t *that)
 {

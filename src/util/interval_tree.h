@@ -67,6 +67,9 @@ public:
      * only the pointer, and the full tree only on writes. */
     interval_tree &operator=(const interval_tree &that);
 
+    /** Swaps the contents of both trees. */
+    void swap(interval_tree &that);
+
 public:
     struct reuse {
         bool operator()(const itree_t &t) const {

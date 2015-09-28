@@ -274,10 +274,12 @@ block_pivots<K, V, Rlx, MaxBlocks>::insert(const size_t block_ix,
                                            const size_t size,
                                            const int pivot)
 {
-    // TODO: itree handling through pointer array.
     memmove(&m_pivots[block_ix + 1],
             &m_pivots[block_ix],
             sizeof(m_pivots[0]) * (size - block_ix));
+    for (size_t i = size; i > block_ix; i--) {
+        m_itrees[i - 1].swap(m_itrees[i]);
+    }
     set(block_ix, pivot);
 }
 
@@ -296,11 +298,11 @@ void
 block_pivots<K, V, Rlx, MaxBlocks>::copy(const size_t src_ix,
                                          const size_t dst_ix)
 {
-    // TODO: itree handling through pointer array.
     if (src_ix == dst_ix) {
         return;
     }
 
     m_pivots[dst_ix] = m_pivots[src_ix];
+    m_itrees[dst_ix].swap(m_itrees[src_ix]);
     m_count_for_size = INVALID_COUNT_FOR_SIZE;
 }
