@@ -49,6 +49,9 @@ private:
     } itree_util_t;
 
 public:
+    interval_tree();
+    virtual ~interval_tree() { }
+
     /** Adds the given index to the set. */
     void insert(const uint64_t index);
 

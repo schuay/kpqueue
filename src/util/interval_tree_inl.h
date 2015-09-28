@@ -17,6 +17,11 @@
  *  along with kpqueue.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+interval_tree::interval_tree() :
+    m_root(nullptr)
+{
+}
+
 void
 interval_tree::insert(const uint64_t index)
 {

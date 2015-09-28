@@ -241,6 +241,7 @@ block_array<K, V, Rlx>::peek()
         size_t block_ix;
         block<K, V> *b = nullptr;
         const typename block<K,  V>::block_item *best = nullptr;
+        size_t best_ix;
         for (block_ix = 0; block_ix < m_size; block_ix++) {
             const int elements_in_range = m_pivots.count_in(block_ix);
 
@@ -251,7 +252,8 @@ block_array<K, V, Rlx>::peek()
             }
 
             b = m_blocks[block_ix];
-            best = b->peek_nth(m_pivots.nth_ix_in(selected_element, block_ix));
+            best_ix = m_pivots.nth_ix_in(selected_element, block_ix);
+            best = b->peek_nth(best_ix);
 
             // TODO: If the current block is less than half-filled, trigger a shrink.
 
@@ -270,7 +272,7 @@ block_array<K, V, Rlx>::peek()
 
             // TODO: Refactor to avoid retreading the entire loop if the selected element
             // is taken.
-            m_pivots.mark_taken_in(selected_element, block_ix);
+            m_pivots.mark_taken_in(best_ix, block_ix);
         }
     }
 }
