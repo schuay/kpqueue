@@ -92,6 +92,38 @@ interval_tree::clear()
     m_root = nullptr;
 }
 
+interval_tree &
+interval_tree::operator=(const interval_tree &that)
+{
+    // TODO: Copy on write. A simple flag if current status is a shallow copy,
+    // and a trigger a real copy in insert if that is the case.
+
+    clear();
+    m_root = copy(that.m_root);
+
+    return *this;
+}
+
+typename interval_tree::itree_t *
+interval_tree::copy(const itree_t *that)
+{
+    if (that == nullptr) {
+        return nullptr;
+    }
+
+    itree_t *node = m_allocator.acquire();
+    node->in_use = true;
+
+    node->k1 = that->k1;
+    node->k2 = that->k2;
+    node->v  = that->v;
+    node->h  = that->h;
+    node->l  = copy(that->l);
+    node->r  = copy(that->r);
+
+    return node;
+}
+
 int
 interval_tree::itree_insert(const uint64_t index,
                             itree_t **root)

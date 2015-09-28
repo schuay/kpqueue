@@ -79,6 +79,8 @@ private:
                         const itree_t *node,
                         const uint64_t taken_to_left_in_supertree) const;
 
+    itree_t *copy(const itree_t *that);
+
 private: /* Raw itree methods. */
     int itree_insert(const uint64_t index,
                      itree_t **root);
