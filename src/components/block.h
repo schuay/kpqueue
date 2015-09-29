@@ -111,6 +111,9 @@ public:
 
     void clear();
 
+    void add_failed_access() { m_failed_accesses.fetch_add(1, std::memory_order_relaxed); }
+    size_t failed_accesses() const { return m_failed_accesses.load(std::memory_order_relaxed); }
+
 public:
     /** Next pointers may be used by all threads. */
     std::atomic<block<K, V> *> m_next;
@@ -144,6 +147,10 @@ private:
 
     static constexpr size_t MAX_SKIPPED_PRUNES = 16;
     size_t m_skipped_prunes;
+
+    /** Counts the number of failed accesses, i.e. random peeks by the slsm encountering
+     *  a taken item. Used as a basis for triggering shrink operations. */
+    std::atomic<size_t> m_failed_accesses;
 };
 
 #include "block_inl.h"

@@ -274,6 +274,7 @@ block_array<K, V, Rlx>::peek()
              * the minimal item within the same block (possibly the same item). */
 
             COUNTERS.failed_peeks++;
+            b->add_failed_access();
 
             const size_t count_in_block = m_pivots.count_in(block_ix);
             assert(count_in_block > 0);

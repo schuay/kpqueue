@@ -50,7 +50,8 @@ block<K, V>::block(const size_t power_of_2) :
     m_capacity(1 << power_of_2),
     m_owner_tid(tid()),
     m_block_items(new block_item[m_capacity]),
-    m_used(false)
+    m_used(false),
+    m_failed_accesses(0)
 {
 }
 
@@ -110,6 +111,8 @@ block<K, V>::merge(const block<K, V> *lhs,
     assert(m_used);
     assert(m_first == 0);
     assert(m_last == 0);
+
+    m_failed_accesses.store(0, std::memory_order_relaxed);
 
     /* Merge. */
 
@@ -188,6 +191,7 @@ block<K, V>::copy(const block<K, V> *that)
     }
 
     m_last = last;
+    m_failed_accesses.store(0, std::memory_order_relaxed);
 }
 
 template <class K, class V>
