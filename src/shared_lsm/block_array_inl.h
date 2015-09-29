@@ -132,8 +132,20 @@ block_array<K, V, Rlx>::compact(block_pool<K, V> *pool)
             continue;
         }
 
-        const size_t size = b->last() - m_pivots.nth_ix_in(0, i);
-        if (size < b->capacity() / 2) {
+        size_t size = b->last() - m_pivots.nth_ix_in(0, i);
+        if (b->needs_compaction()) {
+            size = b->untaken_items(m_pivots.nth_ix_in(0, i));
+            if (size >= b->capacity() / 2) {
+                auto c = pool->get_block(b->power_of_2());
+                c->copy(b);
+                block_set(i, c);
+            }
+        }
+
+        if (size == 0) {
+            m_blocks[i] = nullptr;
+            COUNTERS.block_shrinks++;
+        } else if (size < b->capacity() / 2) {
            /* TODO: Improve shrinking. Ideally, we'd be able to shrink
             * to an arbitrary level and without physically copying blocks. */
            int shrunk_power_of_2 = b->power_of_2() - 1;
@@ -152,8 +164,21 @@ block_array<K, V, Rlx>::compact(block_pool<K, V> *pool)
         auto big_block = m_blocks[i];
         auto small_block = m_blocks[i + 1];
 
-        const size_t big_first = m_pivots.nth_ix_in(0, i);
-        const size_t small_first = m_pivots.nth_ix_in(0, i + 1);
+        // TMP
+        if (small_block == nullptr) {
+            continue;
+        }
+
+        int j = i;
+        while (big_block == nullptr && j > 0) {
+            big_block = m_blocks[--j];
+        }
+        if (big_block == nullptr) {
+            continue;
+        }
+
+        const size_t big_first = m_pivots.nth_ix_in(0, j);
+        const size_t small_first = m_pivots.nth_ix_in(0, i);
 
         const size_t big_pow = big_block->power_of_2();
         const size_t small_pow = small_block->power_of_2();
@@ -167,8 +192,8 @@ block_array<K, V, Rlx>::compact(block_pool<K, V> *pool)
         auto merge_block = pool->get_block(merge_pow);
         merge_block->merge(big_block, big_first, small_block, small_first);
 
-        m_blocks[i + 1] = nullptr;
-        block_set(i, merge_block);
+        m_blocks[i] = nullptr;
+        block_set(j, merge_block);
     }
 
     remove_null_blocks();

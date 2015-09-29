@@ -167,6 +167,7 @@ template <class K, class V>
 void
 block<K, V>::copy(const block<K, V> *that)
 {
+    // TODO: Add a first argument to pass in pivots.
     assert(m_used);
     assert(m_first == 0);
     assert(m_last == 0);
@@ -292,6 +293,35 @@ size_t
 block<K, V>::size() const
 {
     return m_last - m_first;
+}
+
+template <class K, class V>
+size_t
+block<K, V>::untaken_items(const size_t first) const
+{
+    size_t num_items = 0;
+
+    auto src = m_block_items + first;
+    const auto end = m_block_items + m_last;
+    for (; src < end; src++) {
+        if (!src->taken()) {
+            num_items++;
+        }
+    }
+
+    return num_items;
+}
+
+template <class K, class V>
+bool
+block<K, V>::needs_compaction()
+{
+    if (failed_accesses() > size()) {
+        m_failed_accesses.store(0, std::memory_order_relaxed);
+        return true;
+    }
+
+    return false;
 }
 
 template <class K, class V>

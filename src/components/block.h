@@ -113,6 +113,10 @@ public:
 
     void add_failed_access() { m_failed_accesses.fetch_add(1, std::memory_order_relaxed); }
     size_t failed_accesses() const { return m_failed_accesses.load(std::memory_order_relaxed); }
+    bool needs_compaction();
+
+    /** Physically walks through all items and returns the number of untaken ones. */
+    size_t untaken_items(const size_t first) const;
 
 public:
     /** Next pointers may be used by all threads. */
