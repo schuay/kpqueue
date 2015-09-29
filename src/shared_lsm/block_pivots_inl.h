@@ -25,7 +25,8 @@ block_pivots<K, V, Rlx, MaxBlocks>::block_pivots() :
     m_first_in_block { 0 },
     m_maximal_pivot(std::numeric_limits<K>::min()),
     m_count { 0 },
-    m_count_for_size { INVALID_COUNT_FOR_SIZE }
+    m_count_for_size { INVALID_COUNT_FOR_SIZE },
+    m_item_count { 0 }
 {
 }
 
@@ -44,6 +45,9 @@ block_pivots<K, V, Rlx, MaxBlocks>::operator=(const block_pivots<K, V, Rlx, MaxB
 
     m_count = that.m_count;
     m_count_for_size = that.m_count_for_size;
+
+    memcpy(m_items, that.m_items, sizeof(m_items));
+    m_item_count = that.m_item_count;
 
     return *this;
 }
@@ -203,10 +207,36 @@ outer:
     m_count_for_size = INVALID_COUNT_FOR_SIZE;
     m_count = count(size);
 
+    load_items(blocks, size);
+
     /* Note that m_count >= elements_in_tentative_range >= actual # elements in range.
      * We return m_count in this case s.t. peek() can assign a random element
      * out of the full available range. */
     return m_count;
+}
+
+template <class K, class V, int Rlx, int MaxBlocks>
+void
+block_pivots<K, V, Rlx, MaxBlocks>::load_items(block<K, V> **blocks,
+                                               const size_t size)
+{
+    m_item_count = 0;
+
+    for (size_t block_ix = 0; block_ix < size; block_ix++) {
+        const size_t first = m_first_in_block[block_ix];
+        const size_t last  = m_pivots[block_ix];
+
+        auto it = blocks[block_ix]->peek_nth(first);
+        const auto end = it - first + last;
+
+        for (; it < end; it++) {
+            if (!it->taken()) {
+                m_items[m_item_count++] = it;
+            }
+        }
+    }
+
+    assert(m_item_count <= Rlx);
 }
 
 template <class K, class V, int Rlx, int MaxBlocks>

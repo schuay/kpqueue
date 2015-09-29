@@ -65,6 +65,9 @@ private:
                   block<K, V> **blocks,
                   const size_t size);
 
+    void load_items(block<K, V> **blocks,
+                    const size_t size);
+
 private:
     static constexpr size_t INVALID_COUNT_FOR_SIZE = MaxBlocks + 1;
 
@@ -85,6 +88,9 @@ private:
      */
     size_t m_count;
     size_t m_count_for_size;
+
+    const typename block<K, V>::block_item *m_items[Rlx];
+    size_t m_item_count;
 };
 
 #include "block_pivots_inl.h"
