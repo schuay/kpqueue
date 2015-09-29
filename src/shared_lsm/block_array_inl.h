@@ -114,6 +114,8 @@ block_array<K, V, Rlx>::insert(block<K, V> *new_block,
         m_pivots.shrink(m_blocks, m_size);
     } else if (ncandidates < Rlx / 2) {
         m_pivots.grow(ncandidates, m_blocks, m_size);
+    } else {
+        m_pivots.load_items(m_blocks, m_size);
     }
 }
 
@@ -225,11 +227,12 @@ block_array<K, V, Rlx>::peek()
 
     typename block<K, V>::peek_t ret;
     while (true) {
-        int ncandidates = m_pivots.count(m_size);
+        int ncandidates = m_pivots.m_item_count;
 
         /* If the range contains too few items, attempt to improve it. */
 
         if (ncandidates < Rlx / 2) {
+            m_pivots.fast_forward_firsts(m_blocks, m_size);
             ncandidates = m_pivots.grow(ncandidates, m_blocks, m_size);
         }
 
@@ -241,60 +244,15 @@ block_array<K, V, Rlx>::peek()
 
         int selected_element = m_gen() % ncandidates;
 
-        size_t block_ix;
-        block<K, V> *b = nullptr;
-        const typename block<K,  V>::block_item *best = nullptr;
-        for (block_ix = 0; block_ix < m_size; block_ix++) {
-            const int elements_in_range = m_pivots.count_in(block_ix);
-
-            if (selected_element >= elements_in_range) {
-                /* Element not in this block. */
-                selected_element -= elements_in_range;
-                continue;
-            }
-
-            b = m_blocks[block_ix];
-            best = b->peek_nth(m_pivots.nth_ix_in(selected_element, block_ix));
-
-            // TODO: If the current block is less than half-filled, trigger a shrink.
-
-            break;
-        }
-
-        if (best == nullptr) {
+        auto it = m_pivots.m_items[selected_element];
+        if (it->taken()) {
             COUNTERS.failed_peeks++;
-            continue;
-        } else if (!best->taken()) {
+            m_pivots.m_items[selected_element] = m_pivots.m_items[--m_pivots.m_item_count];
+        } else {
             /* Found a valid element, return it. */
             COUNTERS.successful_peeks++;
-            ret = *best;
+            ret = *it;
             return ret;
-        } else if (block_ix < m_size) {
-            /* The selected item has already been taken, fall back to removing
-             * the minimal item within the same block (possibly the same item). */
-
-            COUNTERS.failed_peeks++;
-
-            const size_t count_in_block = m_pivots.count_in(block_ix);
-            assert(count_in_block > 0);
-
-            const size_t first_in_block = m_pivots.nth_ix_in(0, block_ix);
-            best = b->peek_nth(first_in_block);
-
-            for (size_t i = 0; i < count_in_block; i++, best++) {
-                if (!best->taken()) {
-                    /* Simply taking the first item here would bias peek()
-                     * towards the first item in the largest block. Instead,
-                     * retry with a random selection.
-                     * TODO: A possibly optimization is to retry on level up
-                     * the callstack, since we might be doing unnecessary
-                     * work if our local array copy is out of date.
-                     */
-                    break;
-                } else {
-                    m_pivots.mark_first_taken_in(block_ix);
-                }
-            }
         }
     }
 }

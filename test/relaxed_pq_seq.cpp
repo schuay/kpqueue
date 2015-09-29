@@ -30,7 +30,7 @@
 
 using namespace kpq;
 
-#define RELAXATION (32)
+#define RELAXATION (4)
 
 template <class T>
 class PQTest : public ::testing::Test
@@ -99,6 +99,9 @@ TYPED_TEST(PQTest, NewMinElem)
     constexpr static int ITERATIONS = 64;
     uint32_t v;
     for (int i = 0; i < ITERATIONS; i++) {
+        if (i == 3) {
+            printf("gotcha");
+        }
         ASSERT_TRUE(this->m_pq->delete_min(v));
     }
 
@@ -127,6 +130,9 @@ TYPED_TEST(PQTest, ExtractAllDiffSizes)
 
         uint32_t v;
         for (int i = 0; i < size; i++) {
+            if (size == 113 && i == 13) {
+                printf("gotcha");
+            }
             ASSERT_TRUE(this->m_pq->delete_min(v));
             ASSERT_LE(v, this->relaxed_upper_bound(i));
         }

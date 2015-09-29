@@ -40,6 +40,11 @@ public:
                 block<K, V> **blocks,
                 const size_t size);
 
+    void fast_forward_firsts(block<K, V> **blocks,
+                             const size_t size);
+    void load_items(block<K, V> **blocks,
+                    const size_t size);
+
     /** Counts the number of elements within the pivot range. */
     size_t count(const size_t size);
     size_t count_in(const size_t block_ix) const;
@@ -65,9 +70,6 @@ private:
                   block<K, V> **blocks,
                   const size_t size);
 
-    void load_items(block<K, V> **blocks,
-                    const size_t size);
-
 private:
     static constexpr size_t INVALID_COUNT_FOR_SIZE = MaxBlocks + 1;
 
@@ -89,7 +91,8 @@ private:
     size_t m_count;
     size_t m_count_for_size;
 
-    const typename block<K, V>::block_item *m_items[Rlx];
+public:  // TODO: Just for now.
+    const typename block<K, V>::block_item *m_items[Rlx + 1];
     size_t m_item_count;
 };
 

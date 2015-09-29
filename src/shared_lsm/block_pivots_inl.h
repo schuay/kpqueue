@@ -212,7 +212,29 @@ outer:
     /* Note that m_count >= elements_in_tentative_range >= actual # elements in range.
      * We return m_count in this case s.t. peek() can assign a random element
      * out of the full available range. */
-    return m_count;
+    return m_item_count;
+}
+
+template <class K, class V, int Rlx, int MaxBlocks>
+void
+block_pivots<K, V, Rlx, MaxBlocks>::fast_forward_firsts(block<K, V> **blocks,
+                                                        const size_t size)
+{
+    for (size_t block_ix = 0; block_ix < size; block_ix++) {
+        size_t first       = m_first_in_block[block_ix];
+        const size_t last  = m_pivots[block_ix];
+
+        const auto begin = blocks[block_ix]->peek_nth(0);
+        const auto end = begin + last;
+
+        for (auto it = begin + first; it < end; it++) {
+            if (!it->taken()) {
+                break;
+            }
+            first++;
+        }
+        m_first_in_block[block_ix] = first;
+    }
 }
 
 template <class K, class V, int Rlx, int MaxBlocks>
@@ -226,17 +248,16 @@ block_pivots<K, V, Rlx, MaxBlocks>::load_items(block<K, V> **blocks,
         const size_t first = m_first_in_block[block_ix];
         const size_t last  = m_pivots[block_ix];
 
-        auto it = blocks[block_ix]->peek_nth(first);
-        const auto end = it - first + last;
+        const auto begin = blocks[block_ix]->peek_nth(0);
+        const auto end = begin + last;
 
-        for (; it < end; it++) {
+        for (auto it = begin + first; it < end; it++) {
             if (!it->taken()) {
+                assert(m_item_count < Rlx + 1);
                 m_items[m_item_count++] = it;
             }
         }
     }
-
-    assert(m_item_count <= Rlx);
 }
 
 template <class K, class V, int Rlx, int MaxBlocks>
